@@ -6,6 +6,7 @@
 
 static const unsigned long SETTING_POLLING_FREQUENCY = 60 * 5 * 1000 ; 
 static const char * const SETTING_CURRECNY = "CAD"; 
+
 static const float SETTING_PURCHASED_RATE = 10146.18f ; 
 static const float    SETTING_PURCHASED_AMOUNT_IN_BTC =  1.0649218f; 
 
@@ -33,12 +34,51 @@ static const float    SETTING_PURCHASED_AMOUNT_IN_BTC =  1.0649218f;
 #define OLED_RESET 0  // GPIO0
 Adafruit_SSD1306 display(OLED_RESET);
 
+
+
+void UpdateDisplayText( const char * lineOne, const char * lineTwo = ""  ) {
+    // Update the display 
+    // Clear the buffer.
+    display.clearDisplay();
+   
+    // text display tests
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(32,10);
+    display.print(lineOne);
+    display.setCursor(32,25);
+    display.print(lineTwo);
+    display.display();   
+}
+void UpdateDisplay( const float currentRate, const float purchasedProfit, const char * rateCode ) {
+  
+    // Update the display 
+    // Clear the buffer.
+    display.clearDisplay();
+   
+    // text display tests
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(32,10);
+    display.print(currentRate, 2);
+
+    display.setCursor(32,25);
+    display.print(purchasedProfit, 2);
+    display.display();   
+}
+
 void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
-
+    Serial.println("ESP8266 Bitcoin tracker");
+    Serial.println("More information: https://blog.abluestar.com/esp8266-bitcoin-ticker");
+    const char compile_date[] = __DATE__ " " __TIME__;
+    Serial.println("Compile date: " + String(compile_date));
+    Serial.println("\n\n");
+        
+    Serial.println("FYI: Connecting to wifi....");
     WiFiManager wifiManager;
-    wifiManager.autoConnect("ESP8266 Bitcoin Tracker");
+    wifiManager.autoConnect("ESP8266 Bitcoin tracker");
     
     //if you get here you have connected to the WiFi
     Serial.println("connected...yeey :)");
@@ -46,9 +86,9 @@ void setup() {
 
     // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 64x48)
-    display.clearDisplay();    
-    display.display();
+    UpdateDisplayText("loading...");
 }
+
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -62,8 +102,10 @@ void loop() {
     int httpCode = http.GET();// Send the request
     Serial.println("FYI: Request sent, waiting for reply...");
  
-    if (httpCode > 0) { //Check the returning code 
-      Serial.println("FYI: Got rely, httpCode=" + String( httpCode) );
+    Serial.println("FYI: Got reply, httpCode=" + String( httpCode) );
+ 
+    if (httpCode == 200 ) { //Check the returning code 
+      
       String payload = http.getString();   // Get the request response payload
       Serial.println(payload);             // Print the response payload 
 
@@ -87,27 +129,15 @@ void loop() {
         Serial.print( purchasedProfit ) ;
         Serial.print( ") " );         
         Serial.println( rateCode);
-        
 
-        // Update the display 
-        // Clear the buffer.
-        display.clearDisplay();
-       
-        // text display tests
-        display.setTextSize(1);
-        display.setTextColor(WHITE);
-        display.setCursor(32,10);
-        display.print(currentRate, 2);
-        // display.setCursor(70,10);
-        // display.print(rateCode);
-
-        display.setCursor(32,25);
-        display.print(purchasedProfit, 2);
-        display.display();        
+        UpdateDisplay( currentRate, purchasedProfit, rateCode );
       } else {
         Serial.println( "Error: Could not decode the JSON payload");
+        UpdateDisplayText("Error","JSON");
       }
-    } 
+    } else {
+      UpdateDisplayText("Error","HTTP");
+    }
     Serial.println("FYI: Done with the HTTP request.");
     http.end();   //Close connection 
   }
